@@ -2,12 +2,11 @@
 
 import json
 import re
-
+from math import ceil
 from urllib import urlencode
 from urlparse import urljoin
 
 import requests
-
 from BeautifulSoup import BeautifulSoup as BS
 
 class Mubi(object):
@@ -24,6 +23,9 @@ class Mubi(object):
     _URL_PERSON = urljoin(_URL_MUBI, "cast_members/%s")
     _URL_LOGOUT = urljoin(_URL_MUBI, "logout")
     _URL_FILMSTILL = "http://s3.amazonaws.com/auteurs_production/images/film/%s/w448/%s.jpg"
+    _URL_SHORTDETAILS = urljoin(_URL_MUBI, "/services/films/tooltip?id=%s&country_code=US&locale=en_US")
+    _URL_FULLDETAILS = urljoin(_URL_MUBI, "films/%s")
+    _URL_WATCHLIST = urljoin(_URL_MUBI, "/users/%s/watchlist.json")
 
     _SORT_KEYS = ['popularity', 'recently_added', 'rating', 'year', 'running_time']
 
@@ -524,8 +526,16 @@ class Mubi(object):
     def _search(self, term):
         return json.loads(self._session.get(self._URL_SEARCH % term).content)
 
+    def _get_shortdetails(self, mubi_id):
+        return json.loads(self._session.get(self._URL_SHORTDETAILS % unicode(mubi_id)
+            ).content)
+
     def _get_filmstill(self, name):
         return self._URL_FILMSTILL % (name, name)
+
+    def _resolve_id(self, mubi_id):
+        return self._session.head(self._URL_FULLDETAILS % mubi_id
+                ).headers['location'].split("/")[-1]
 
     def login(self, username, password):
         self._username = username
@@ -538,8 +548,10 @@ class Mubi(object):
                             'password': password,
                             'x': 0,
                             'y': 0 }
-
-        return self._session.post(self._URL_SESSION, data=session_payload)
+        landing_page = self._session.post(self._URL_SESSION,
+                                          data=session_payload)
+        self._userid = BS(landing_page.content).find(
+                "a", {"class": "user_avatar"}).get("href").split("/")[-1]
 
     def is_film_available(self, name):
         if not self._session.head(self._URL_VIDEO % name):
@@ -590,7 +602,10 @@ class Mubi(object):
             params["language_id"] = language
         list_url = urljoin(self._URL_LIST, "?" + urlencode(params))
         list_page = self._session.get(list_url)
-        return self._parse_watchable_titles(list_page.content)
+        num_pages = ceil(int(BS(list_page.content)
+                         .find("strong", {"id": "result_count"}).text
+                         .split()[0])/20.0)
+        return (num_pages, self._parse_watchable_titles(list_page.content))
 
     def get_all_programs(self):
         programs_page = self._session.get(self._URL_PROGRAMS)
@@ -615,3 +630,13 @@ class Mubi(object):
         return [("%s: %s (%s)" % (x['director'], x['title'], x['country_year']), x['id'],
                  x['thumb'])
                 for x in films]
+
+    def get_watchlist(self, userid=None):
+        if not userid:
+            userid = self._userid
+        items = [self._get_shortdetails(x)
+                for x in json.loads(
+                    self._session.get(self._URL_WATCHLIST % userid).content)]
+        return [("%s (%s %s)" % (x['title'], x['primary_country'], x['year']),
+                 unicode(x['id']), self._get_filmstill(self._resolve_id(x['id'])))
+                 for x in items]

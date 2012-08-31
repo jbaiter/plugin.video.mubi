@@ -11,9 +11,7 @@ USER = ''
 PASS = ''
 
 plugin = Plugin(PLUGIN_NAME, PLUGIN_ID, __file__)
-#TODO: Check if we can somehow persist this across instances, otherwise
-#      the add-on will be very sluggish, as we will have to login/logout
-#      every time it is run.
+
 mubi_session = Mubi()
 mubi_session.login(USER, PASS)
 
@@ -23,8 +21,8 @@ def index():
                'url': plugin.url_for('select_filter')},
              {'label': 'Cinemas', 'is_folder': True,
                'url': plugin.url_for('show_cinemas')},
-              {'label': 'Wishlist', 'is_folder': True,
-               'url': plugin.url_for('show_films', filter='wishlist', argument='0', page='1')},
+              {'label': 'Watchlist', 'is_folder': True,
+               'url': plugin.url_for('show_films', filter='watchlist', argument='0', page='1')},
               {'label': 'Search', 'is_folder': True,
                'url': plugin.url_for('show_search_targets')}]
     return plugin.add_items(items)
@@ -33,8 +31,6 @@ def index():
 def select_filter():
     options = [ {'label': 'All Films', 'is_folder': True,
                  'url': plugin.url_for('show_films', filter='all', argument='0', page='1')},
-                {'label': 'Recommendations', 'is_folder': True,
-                 'url': plugin.url_for('show_films', filter='recommended', argument='0', page='1')},
                 {'label': 'By Genre', 'is_folder': True,
                  'url': plugin.url_for('show_genres')},
                 {'label': 'By Country', 'is_folder': True,
@@ -82,19 +78,16 @@ def show_search_results(target, term):
 def show_films(filter, argument, page):
     page = int(page)
     if filter == 'all':
-        films = mubi_session.get_all_films(page=page)
-    elif filter == 'recommended':
-        #TODO: Get recommended movies
-        raise NotImplementedError
+        num_pages, films = mubi_session.get_all_films(page=page)
     elif filter == 'watchlist':
-        #TODO: Get films from watchlist
-        raise NotImplementedError
+        films = mubi_session.get_watchlist()
+        num_pages = 1
     elif filter == 'genre':
-        films = mubi_session.get_all_films(genre=argument,page=page)
+        num_pages, films = mubi_session.get_all_films(genre=argument,page=page)
     elif filter == 'country':
-        films = mubi_session.get_all_films(country=argument,page=page)
+        num_pages, films = mubi_session.get_all_films(country=argument,page=page)
     elif filter == 'language':
-        films = mubi_session.get_all_films(language=argument,page=page)
+        num_pages, films = mubi_session.get_all_films(language=argument,page=page)
     #TODO: Display error message when there are no films
     items = [{'label': x[0], 'is_folder': False, 'is_playable': True,
               'url': plugin.url_for('play_film', identifier=x[1]),
@@ -104,10 +97,10 @@ def show_films(filter, argument, page):
         items.append({'label': 'Previous...', 'is_folder': True,
                       'url': plugin.url_for('show_films', filter=filter,
                                              argument=argument, page=unicode(page-1))})
-    #TODO: Only add "Next" if there are actually additional pages
-    items.append({'label': 'Next...', 'is_folder': True,
-                  'url': plugin.url_for('show_films', filter=filter,
-                                         argument=argument, page=unicode(page+1))})
+    if (num_pages - page) > 0:
+        items.append({'label': 'Next...', 'is_folder': True,
+                    'url': plugin.url_for('show_films', filter=filter,
+                                            argument=argument, page=unicode(page+1))})
     return plugin.add_items(items)
 
 @plugin.route('/play/<identifier>')
