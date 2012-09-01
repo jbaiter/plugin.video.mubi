@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-from xbmcswift import Plugin
+from xbmcswift import xbmc, xbmcgui, Plugin
 from resources.lib.mubi import Mubi
 
 PLUGIN_NAME = 'MUBI'
@@ -17,25 +17,25 @@ mubi_session.login(plugin.get_setting("username"),
 
 @plugin.route('/')
 def index():
-    items = [ {'label': 'Films', 'is_folder': True,
-               'url': plugin.url_for('select_filter')},
-             {'label': 'Cinemas', 'is_folder': True,
-               'url': plugin.url_for('show_cinemas')},
-              {'label': 'Watchlist', 'is_folder': True,
-               'url': plugin.url_for('show_films', filter='watchlist', argument='0', page='1')},
-              {'label': 'Search', 'is_folder': True,
-               'url': plugin.url_for('show_search_targets')}]
+    items = [{'label': plugin.get_string(31001), 'is_folder': True,
+              'url': plugin.url_for('select_filter')},
+             {'label': plugin.get_string(31002), 'is_folder': True,
+              'url': plugin.url_for('show_cinemas')},
+             {'label': plugin.get_string(31003), 'is_folder': True,
+              'url': plugin.url_for('show_films', filter='watchlist', argument='0', page='1')},
+             {'label': plugin.get_string(31004), 'is_folder': True,
+              'url': plugin.url_for('show_search_targets')}]
     return plugin.add_items(items)
 
 @plugin.route('/films')
 def select_filter():
-    options = [ {'label': 'All Films', 'is_folder': True,
+    options = [ {'label': plugin.get_string(31005), 'is_folder': True,
                  'url': plugin.url_for('show_films', filter='all', argument='0', page='1')},
-                {'label': 'By Genre', 'is_folder': True,
+                {'label': plugin.get_string(31006), 'is_folder': True,
                  'url': plugin.url_for('show_genres')},
-                {'label': 'By Country', 'is_folder': True,
+                {'label': plugin.get_string(31007), 'is_folder': True,
                  'url': plugin.url_for('show_countries')},
-                {'label': 'By Language', 'is_folder': True,
+                {'label': plugin.get_string(31008), 'is_folder': True,
                  'url': plugin.url_for('show_languages')} ]
     return plugin.add_items(options)
 
@@ -58,21 +58,49 @@ def show_cinema_films(cinema):
 
 @plugin.route('/search')
 def show_search_targets():
-    targets = [{'label': 'Film', 'is_folder': True,
+    targets = [{'label': plugin.get_string(31009), 'is_folder': True,
                 'url': plugin.url_for('show_search', target='film')},
-               {'label': 'Person', 'is_folder': True,
+               {'label': plugin.get_string(31010), 'is_folder': True,
                 'url': plugin.url_for('show_search', target='person')}]
     return plugin.add_items(targets)
 
 @plugin.route('/search/<target>')
 def show_search(target=None):
-    #TODO: Display onscreen keyboard and call show_search_results
-    raise NotImplementedError
+    if target == 'film':
+        label = plugin.get_string(31013)
+    else:
+        label = plugin.get_string(31014)
+    keyboard = xbmc.Keyboard('', label)
+    keyboard.doModal()
+    if keyboard.isConfirmed() and keyboard.getText():
+        search_string = keyboard.getText()
+        url = plugin.url_for('show_search_results', target=target,
+                             term=search_string)
+        plugin.redirect(url)
 
 @plugin.route('/search/<target>/<term>')
 def show_search_results(target, term):
-    #TODO: Display query results
-    raise NotImplementedError
+    if target == 'film':
+        results = mubi_session.search_film(term)
+        items = [{'label': x[0], 'is_folder': False, 'is_playable': True,
+                  'url': plugin.url_for('play_film', identifier=unicode(x[1])),
+                  'thumbnail': x[2]} for x in results]
+        return plugin.add_items(items)
+    elif target == 'person':
+        results = mubi_session.search_person(term)
+        items = [{'label': x[0], 'is_folder': True,
+                  'url': plugin.url_for('show_person_films',
+                  person=unicode(x[1])), 'thumbnail': x[2]}
+                  for x in results]
+        return plugin.add_items(items)
+
+@plugin.route('/persons/<person>')
+def show_person_films(person):
+    films = mubi_session.get_person_films(person)
+    items = [{'label': x[0], 'is_folder': False, 'is_playable': True,
+              'url': plugin.url_for('play_film', identifier=x[1]),
+              'thumbnail': x[2]} for x in films]
+    return plugin.add_items(items)
 
 @plugin.route('/films/<filter>/<argument>/<page>')
 def show_films(filter, argument, page):
@@ -88,26 +116,26 @@ def show_films(filter, argument, page):
         num_pages, films = mubi_session.get_all_films(country=argument,page=page)
     elif filter == 'language':
         num_pages, films = mubi_session.get_all_films(language=argument,page=page)
-    #TODO: Display error message when there are no films
     items = [{'label': x[0], 'is_folder': False, 'is_playable': True,
               'url': plugin.url_for('play_film', identifier=x[1]),
               'thumbnail': x[2]}
               for x in films]
+    if len(items) == 0:
+        xbmcgui.Dialog().ok(plugin.get_string(30000), plugin.get_string(31015))
+        plugin.redirect(plugin.url_for('select_filter'))
     if page > 1:
-        items.append({'label': 'Previous...', 'is_folder': True,
+        items.append({'label': plugin.get_string(31011), 'is_folder': True,
                       'url': plugin.url_for('show_films', filter=filter,
-                                             argument=argument, page=unicode(page-1))})
+                                            argument=argument, page=unicode(page-1))})
     if (num_pages - page) > 0:
-        items.append({'label': 'Next...', 'is_folder': True,
-                    'url': plugin.url_for('show_films', filter=filter,
+        items.append({'label': plugin.get_string(31012), 'is_folder': True,
+                      'url': plugin.url_for('show_films', filter=filter,
                                             argument=argument, page=unicode(page+1))})
     return plugin.add_items(items)
 
 @plugin.route('/play/<identifier>')
 def play_film(identifier):
     return plugin.set_resolved_url(mubi_session.get_play_url(identifier))
-    #return plugin.add_items([{'label': 'Play', 'is_playable': True, 'is_folder': False,
-                              #'url': mubi_session.get_play_url(identifier)}])
 
 @plugin.route('/list/genres')
 def show_genres():
