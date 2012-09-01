@@ -1,5 +1,29 @@
 # -*- coding: utf-8 -*-
 
+# Copyright (c) 2012, Johannes Baiter (jbaiter)
+# All rights reserved.
+# 
+# Redistribution and use in source and binary forms, with or without
+# modification, are permitted provided that the following conditions are met: 
+# 
+# 1. Redistributions of source code must retain the above copyright notice,
+#    this list of conditions and the following disclaimer. 
+# 2. Redistributions in binary form must reproduce the above copyright notice,
+#    this list of conditions and the following disclaimer in the documentation
+#    and/or other materials provided with the distribution. 
+# 
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+# AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+# ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
+# LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+# CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+# SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+# INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+# CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+# ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+# POSSIBILITY OF SUCH DAMAGE.
+
 import json
 import re
 from math import ceil
@@ -26,6 +50,7 @@ class Mubi(object):
     _URL_SHORTDETAILS = urljoin(_URL_MUBI, "/services/films/tooltip?id=%s&country_code=US&locale=en_US")
     _URL_FULLDETAILS = urljoin(_URL_MUBI, "films/%s")
     _URL_WATCHLIST = urljoin(_URL_MUBI, "/users/%s/watchlist.json")
+    _URL_PERSON_IMAGE = "http://s3.amazonaws.com/auteurs_production/images/cast_member/%s/original.jpg"
 
     _SORT_KEYS = ['popularity', 'recently_added', 'rating', 'year', 'running_time']
 
@@ -533,6 +558,12 @@ class Mubi(object):
     def _get_filmstill(self, name):
         return self._URL_FILMSTILL % (name, name)
 
+    def _get_person_image(self, person_id):
+        url = self._URL_PERSON_IMAGE % unicode(person_id)
+        if not self._session.head(url):
+            url = url.replace("jpg", "jpeg")
+        return url
+
     def _resolve_id(self, mubi_id):
         return self._session.head(self._URL_FULLDETAILS % mubi_id
                 ).headers['location'].split("/")[-1]
@@ -581,7 +612,7 @@ class Mubi(object):
 
     def search_person(self, term):
         results = self._search(term)
-        final = [(x['label'], x['id'])
+        final = [(x['label'], x['id'], self._get_person_image(x['id']))
                  for x in results if x['category'] == "People"]
         return final
     
