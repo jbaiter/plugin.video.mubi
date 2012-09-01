@@ -6,14 +6,14 @@ from resources.lib.mubi import Mubi
 PLUGIN_NAME = 'MUBI'
 PLUGIN_ID = 'plugin.video.mubi'
 
-#TODO: Handle this via the settings!
-USER = ''
-PASS = ''
-
 plugin = Plugin(PLUGIN_NAME, PLUGIN_ID, __file__)
 
+if not plugin.get_setting("username"):
+    plugin.open_settings()
+
 mubi_session = Mubi()
-mubi_session.login(USER, PASS)
+mubi_session.login(plugin.get_setting("username"),
+                   plugin.get_setting("password"))
 
 @plugin.route('/')
 def index():

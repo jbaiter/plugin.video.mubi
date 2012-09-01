@@ -1,5 +1,27 @@
 <?xml version="1.0" encoding="utf-8" standalone="yes"?>
 <strings>
-  <!-- Plugin name -->
+  <!-- Plugin title --!>
   <string id="30000">MUBI</string>
+  <!-- Main interface strings -->
+  <string id="31001">Films</string>
+  <string id="31002">Cinemas</string>
+  <string id="31003">Watchlist</string>
+  <string id="31004">Search</string>
+  <string id="31005">All Films</string>
+  <string id="31006">By Genre</string>
+  <string id="31007">By Country</string>
+  <string id="31008">By Language</string>
+  <string id="31009">Film</string>
+  <string id="31010">Person</string>
+  <string id="31011">Previous...</string>
+  <string id="31012">Next...</string>
+  <string id="31013">Film Search</string>
+  <string id="31014">Person Search</string>
+  <string id="31014">Unfortunately, there are no watchable items for your query</string>
+
+  <!-- Settings dialog strings -->
+  <string id="32001">MUBI Settings</string>
+  <string id="32011">Username/Email</string>
+  <string id="32012">Password</string>
+  <string id="32013">Debugging Mode</string>
 </strings>
