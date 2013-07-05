@@ -1,3 +1,7 @@
+.. warning::
+    I don't have a subscription for MUBI at the moment, so **development is on hold** until I
+    subscribe again. You are welcome to send me pull requests, though!
+
 =============
 MUBI for XBMC
 =============
